@@ -1,8 +1,6 @@
 # Ermot
 
-Ermot : télécommande PC depuis mobile — contrôle souris, clavier, multimédia et volume facilement !
-
-Ermot est une application Electron qui transforme votre téléphone en télécommande pour votre PC. Elle permet de contrôler la souris, le clavier, le multimédia, le volume et certaines actions système (verrouiller, veille, redémarrer, éteindre) depuis un navigateur mobile.
+Ermot Server est une application Electron qui transforme votre téléphone en télécommande pour votre PC. Elle permet de contrôler la souris, le clavier, le multimédia, le volume et certaines actions système (verrouiller, veille, redémarrer, éteindre) depuis un navigateur mobile.
 
 Ce dépôt contient :
 - le code source de l'application Electron (`src/main` et `src/renderer`),
@@ -82,6 +80,19 @@ package.json        # scripts & dépendances
 Pour publier les installateurs sur GitHub, utilisez la page Releases et attachez les fichiers générés (`Setup.exe`, `RELEASES`, `*.nupkg`, `checksums-sha256.txt`, etc.). Ne commitez pas les binaires dans le dépôt source.
 
 ---
+
+## Licence
+
+ISC
+
+---
+
+Si vous voulez, je peux :
+- générer un fichier `icon.ico` pour l'installateur Windows et mettre à jour `forge.config.js`,
+- créer un ZIP contenant tous les artifacts prêts à uploader, ou
+- ajouter un fichier de release simplifié pour les utilisateurs (format `.md`).
+
+Dites-moi ce que vous préférez.
 
 ## Licence
 
