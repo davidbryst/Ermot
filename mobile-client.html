@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="fr" style="background: linear-gradient(rgba(15,15,15,0.92) 0 0), url('./6791569.jpg'); background-size: cover; background-position: center center; background-attachment: fixed; background-repeat: repeat; background-blend-mode: darken, multiply;">
+<head>
+  <meta charset="UTF-8">
+  <!--
+    Pour récupérer visuellement la zone réellement visible sur Chrome Mobile,
+    il faut utiliser la "Visual Viewport" API ou bien l'unité CSS '100dvh' (device viewport height)
+    et/ou gérer dynamiquement la hauteur du viewport pour échapper au bug des barres d'adresse/navigation qui modifient la taille disponible.
+    Vous pouvez aussi écouter 'resize' sur window.visualViewport.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Mobile / PWA icons -->
+  <link rel="manifest" href="./assets/site.webmanifest">
+  <!-- multiple sizes point to the same icon.png (browser will scale) -->
+  <link rel="icon" type="image/png" sizes="16x16" href="./assets/icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./assets/icon.png">
+  <!-- Apple touch icon fallback -->
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/icon.png">
+  <!-- Inline SVG fallback (very small, used if external icons missing) -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='100%25' height='100%25' fill='%232564eb'/%3E%3Ctext x='50%25' y='54%25' font-size='64' text-anchor='middle' fill='white' font-family='Arial, sans-serif'%3E%F0%9F%93%B1%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#101010">
+  <title>Ermot Mobile Control</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Optionnel: forcer HTTPS pour cette page (désactivé par défaut pour compatibilité avec serveurs non-HTTPS)
+    (function enforcePageHttps() {
+      try {
+        const force = localStorage.getItem('ermot-force-https') === '1';
+        if (force && location.protocol !== 'https:' && location.hostname !== 'localhost') {
+          const u = new URL(location.href);
+          u.protocol = 'https:';
+          location.replace(u.toString());
+        }
+      } catch (_) {}
+    })();
+  </script>
+  <style>
+    /* Ajustement spécifiquement pour que le body prenne toujours la zone visible (Chrome Android/iOS) */
+    /* REGLE POUR CHROME : Utilise 100dvh pour occuper toute la hauteur visible sur mobile Chrome */
+    html, body {
+      height: 90vh; /* Utilise la hauteur réelle du viewport sur Chrome Mobile récent */
+      overflow: hidden; /* JE VEUX PAS DE SCROLLE SUR MON APP */
+    }
+    body {
+      box-sizing: border-box;
+      overflow-x: hidden;
+    }
+    /* Barre de navigation circulaire (tab bar) en bas */
+    .circular-tab-bar {
+      position: fixed;
+      z-index: 50;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 320px;
+      height: 70px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      background: rgba(16,16,16,0.6);
+      border-radius: 50px 50px 50px 50px/55px 55px 50px 50px;
+      box-shadow: 0 8px 32px 0 rgba(0,0,0,0.18), 0 2px 8px 0 rgba(0,0,0,0.08);
+      padding: 0 18px 12px 18px;
+      border: 1.5px solid rgba(255,255,255,0.13);
+      backdrop-filter: blur(9px);
+      transition: background 0.2s;
+    }
+    @media (max-width: 360px) {
+      .circular-tab-bar { width: 98vw; }
+    }
+    .circular-tab-item {
+      flex: 1 1 0;
+      margin: 0 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .circular-tab-item button {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(240,240,240,0.83);
+      color: #212121;
+      font-size: 1.61rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 12px 0 rgba(45,76,240,0.07);
+      border: 2.5px solid transparent;
+      transition: transform 0.16s, border 0.16s, background 0.18s;
+      outline: none;
+      cursor: pointer;
+    }
+    .circular-tab-item.active button,
+    .circular-tab-item button:active {
+      background: radial-gradient(ellipse 80% 90% at 60% 30%, #2564eb 65%, #172d5f 100%);
+      color: white;
+      border-color: #357ff6;
+      transform: scale(1.08);
+      box-shadow: 0 6px 18px 0 rgba(23,64,218,0.22);
+    }
+    .circular-tab-label {
+      font-size: 0.70rem;
+      margin-top: 4px;
+      color: #c6d0f1;
+      opacity: 0.73;
+      font-weight: 600;
+      text-align: center;
+      user-select: none;
+      pointer-events: none;
+    }
+    .circular-tab-item.active .circular-tab-label {
+      color: #fffa;
+      opacity: 1;
+      font-weight: 700;
+    }
+    /* Déconnexion coloré */
+    .deco-btn {
+      background: linear-gradient(135deg, #ef4444cc 65%, #b91c1ccc 100%);
+      color: #fff !important;
+      font-weight: 800;
+      border: 2.5px solid transparent;
+      box-shadow: 0 4px 16px 0 rgba(239,68,68,0.10), 0 2px 8px 0 rgba(0,0,0,0.06);
+      transition: transform 0.16s, background 0.18s, box-shadow 0.18s;
+    }
+    .deco-btn:active, .deco-btn.deco-active {
+      background: linear-gradient(135deg, #ef4444 75%, #991b1b 100%);
+      border-color: #f87171;
+      color: #fff !important;
+      transform: scale(1.09);
+      box-shadow: 0 6px 16px 0 rgba(185,28,28,0.17);
+    }
+    .deco-label {
+      color: #fee2e2 !important;
+      opacity: 0.78 !important;
+      font-weight: 700 !important;
+    }
+    .circular-tab-item.deco {
+      flex: 0.8 1 0;
+    }
+    /* Disconnection bottom btn just below tab bar */
+    .disconnect-bottom-container {
+      position: fixed;
+      left: 0;
+      right: 0;
+      z-index: 49;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+    }
+    #disconnect-bottom {
+      pointer-events: auto;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+    }
+    /* Glassmorphism utilities */
+    :root {
+      --glass-bg: rgba(16,16,16,0.55);
+      --glass-border: rgba(255,255,255,0.14);
+      --glass-shadow: 0 8px 32px 0 rgba(0,0,0,0.18), 0 2px 8px 0 rgba(0,0,0,0.08);
+      --glass-blur: 9px;
+      --glass-radius: 16px;
+    }
+    .glass {
+      background: var(--glass-bg);
+      border: 1.5px solid var(--glass-border);
+      backdrop-filter: blur(var(--glass-blur));
+      border-radius: var(--glass-radius);
+      box-shadow: var(--glass-shadow);
+    }
+  </style>
+  <script>
+    // Cette fonction permet de récupérer la taille VISIBLE réelle sur Chrome Mobile/iOS.
+    // Utilisez visualViewport si supporté!
+    function getVisibleViewport() {
+      if (window.visualViewport) {
+        return {
+          width: window.visualViewport.width,
+          height: window.visualViewport.height,
+          offsetLeft: window.visualViewport.offsetLeft,
+          offsetTop: window.visualViewport.offsetTop
+        };
+      } else {
+        return {
+          width: window.innerWidth,
+          height: window.innerHeight,
+          offsetLeft: 0,
+          offsetTop: 0
+        };
+      }
+    }
+    // Upgrade helper: force https for any absolute http(s) URL, except localhost
+    function ensureHttpsUrl(url) {
+      try {
+        const u = new URL(url);
+        const force = localStorage.getItem('ermot-force-https') === '1' || location.protocol === 'https:';
+        if (force && u.hostname !== 'localhost') u.protocol = 'https:';
+        return u.toString();
+      } catch (_) {
+        return url;
+      }
+    }
+
+    // Pour du debug, affiche la taille visible à chaque resize
+    window.addEventListener('resize', () => {
+      const viewport = getVisibleViewport();
+      console.log('[DEBUG] Zone visible (viewport):', viewport);
+      // Par exemple, vous pourriez ajuster dynamiquement la hauteur d'un élément ici:
+      // document.body.style.height = viewport.height + "px";
+    });
+    // Vous pouvez aussi écouter window.visualViewport.resize pour être plus précis sur Chrome Mobile:
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        const viewport = getVisibleViewport();
+        console.log('[DEBUG][visualViewport] Zone visible:', viewport);
+      });
+    }
+  </script>
+</head>
+<body class="min-h-screen text-white" style="background: url('./6791569.jpg'), #000; background-size: cover; background-position: center; background-attachment: fixed; background-repeat: no-repeat;">
+
+  <div class="px-2 sm:px-5 max-w-[500px] mx-auto mt-3 ">
+    <div class="glass flex justify-between p-2 sm:p-3 text-center sticky top-0 z-50 ">
+      <h1 class="text-lg sm:text-xl font-extrabold drop-shadow">🎛️ Ermot Control</h1>
+      <!-- <p class="text-xs opacity-80 mt-1">Contrôle à distance</p> -->
+      <div id="status" class="inline-block px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold mt-1 bg-red-600/90 border border-white/20 shadow">Déconnecté</div>
+    </div>
+
+  </div>
+  <!-- Alerte caméra/contextes non sécurisés -->
+  <div class="px-2 sm:px-5 max-w-[500px] mx-auto mt-0">
+    <div id="camera-warning" class="hidden bg-amber-500/20 border border-amber-400/40 text-amber-100 rounded-xl px-3 py-2 text-sm">
+      <div class="font-bold mb-0.5">Accès caméra bloqué</div>
+      <div id="camera-warning-text" class="opacity-90"></div>
+      <div class="mt-2 flex gap-2">
+        <button id="open-https-btn" class="px-3 py-1.5 bg-amber-500 text-black rounded-md font-semibold hidden" onclick="openHttpsVersion()">Ouvrir en HTTPS</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="px-2 sm:px-5 py-4 sm:py-5 max-w-[500px] mx-auto">
+    <!-- Section connexion -->
+    <div class="glass p-4 sm:p-5 mb-4" id="connection-card">
+      <h2 class="flex items-center gap-2 text-lg sm:text-xl font-semibold mb-2">
+        <span class="text-2xl sm:text-3xl">📱</span>
+        <span>Connexion au serveur</span>
+      </h2>
+      <!-- <div class="qr-scanner hidden mb-3" id="qr-scanner">
+        <video id="qr-video" class="w-full aspect-square rounded-md"></video>
+        <p class="text-sm text-center opacity-70 mt-2">📷 Scannez le QR code...</p>
+      </div>
+      <button onclick="toggleQRScanner()" id="scan-btn" class="w-full py-2 mb-2 text-base bg-blue-500 hover:bg-blue-600 rounded-lg font-bold text-white shadow transition-all">📷 Scanner QR Code</button>
+      <button onclick="openQrFilePicker()" id="scan-file-btn" class="w-full py-2 mb-2 text-base bg-indigo-500 hover:bg-indigo-600 rounded-lg font-bold text-white shadow transition-all">🖼️ Importer photo du QR</button>
+      <input type="file" id="qr-file-input" accept="image/*" capture="environment" class="hidden" />
+      <div class="text-center my-3 opacity-60 text-sm">ou</div> -->
+      <div class="manual-connect flex flex-col sm:flex-row gap-2">
+        <!-- <input
+          type="text"
+          id="server-url"
+          placeholder="https://192.168.1.x:9000"
+          value=""
+          class="w-full rounded-lg border border-white/30 bg-white/20 px-3 py-2 text-sm text-white placeholder:text-white/70 outline-none focus:border-blue-400 transition"
+        > -->
+        <!-- <button onclick="connectManual()" class="w-full sm:w-auto px-3 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold text-white shadow transition-all">🔌 Connexion Manuelle</button> -->
+        <!-- <button onclick="connectManual()" class="w-full sm:w-auto px-3 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold text-white shadow transition-all">🔌 Connexion Manuelle</button> -->
+        <button onclick="location.reload()" class="w-full sm:w-auto px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-white shadow transition-all">🔁 reconnexion</button>
+      </div>
+    </div>
+
+    <!-- Reste du HTML inchangé ... -->
+    <!-- Section Trackpad/Souris -->
+    <div class="glass p-4 sm:p-5 mb-4 hidden" id="trackpad-card">
+      <h2 class="flex items-center gap-2 text-lg sm:text-xl font-semibold mb-2">
+        <span class="text-2xl sm:text-3xl">🖱️</span>
+        <span>Trackpad</span>
+      <div class="flex justify-end mb-3 w-full">
+        <button type="button" onclick="openSensitivityPopup()" class="px-3 py-2 rounded-lg bg-white/30 hover:bg-white/60 font-semibold text-sm transition">
+          ⚙️ Sensibilité
+        </button>
+      </div>
+      </h2>
+      <div id="trackpad" class="bg-white/20 rounded-2xl h-80 sm:h-80 mb-3 relative overflow-hidden select-none touch-none">
+        <div class="absolute top-1/2 left-1/2 opacity-30 -translate-x-1/2 -translate-y-1/2 text-4xl pointer-events-none">👆</div>
+      </div>
+      <div class="grid grid-cols-3 gap-2">
+        <button onclick="mouseClick('left')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">Clic G</button>
+        <button onclick="mouseClick('middle')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">Clic M</button>
+        <button onclick="mouseClick('right')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">Clic D</button>
+      </div>
+    </div>
+
+    <!-- Popup Sensibilité Souris -->
+    <div id="sensitivity-modal" class="fixed inset-0 z-[60] hidden items-center justify-center">
+      <div class="absolute inset-0 bg-black/60" onclick="closeSensitivityPopup()"></div>
+      <div class="relative glass w-[92vw] max-w-[420px] mx-auto p-4 sm:p-5 rounded-2xl">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-base sm:text-lg font-semibold">Réglage de la sensibilité</h3>
+          <button type="button" class="px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30" onclick="closeSensitivityPopup()">✖</button>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="sensitivity-slider" class="text-xs opacity-85">Sensibilité curseur</label>
+              <span id="pointer-sens-value" class="text-xs opacity-85">1.8</span>
+            </div>
+            <input type="range" id="sensitivity-slider" min="0.5" max="4" step="0.1" value="1.8" class="w-full accent-blue-500">
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="scroll-sensitivity-slider" class="text-xs opacity-85">Sensibilité scroll</label>
+              <span id="scroll-sens-value" class="text-xs opacity-85">2.5</span>
+            </div>
+            <input type="range" id="scroll-sensitivity-slider" min="0.5" max="6" step="0.1" value="2.5" class="w-full accent-blue-500">
+          </div>
+          <div class="flex items-center gap-2 mt-1">
+            <input type="checkbox" id="scroll-invert-toggle" class="accent-blue-500" checked>
+            <label for="scroll-invert-toggle" class="text-xs opacity-85 select-none">Inverser le sens du scroll</label>
+          </div>
+        </div>
+        <div class="mt-4 flex justify-end gap-2">
+          <button type="button" class="px-3 py-2 rounded-lg bg-white text-slate-900 font-semibold" onclick="closeSensitivityPopup()">Fermer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section Multimédia (+ Volume intégré ici désormais) -->
+    <div class="glass p-4 sm:p-5 mb-4 hidden" id="media-card">
+      <h2 class="flex items-center gap-2 text-lg sm:text-xl font-semibold mb-2">
+        <span class="text-2xl sm:text-3xl">🎵</span>
+        <span>Contrôle Multimédia</span>
+      </h2>
+
+      <div class="flex items-center justify-center gap-2 sm:gap-3 mt-1">
+        <button onclick="mediaControl('precedent')" class="px-4 py-3 rounded-xl text-base font-semibold bg-white text-slate-800 shadow-md active:scale-95">⏮️</button>
+        <button onclick="mediaControl('lecture')" class="px-5 py-4 rounded-2xl text-lg font-bold bg-emerald-500 text-white shadow-lg active:scale-95">⏯️</button>
+        <button onclick="mediaControl('suivant')" class="px-4 py-3 rounded-xl text-base font-semibold bg-white text-slate-800 shadow-md active:scale-95">⏭️</button>
+      </div>
+
+      <!-- Boutons saut temporel -->
+      <div class="flex items-center justify-center gap-2 mt-3">
+        <button onclick="mediaControl('reculer10')" class="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-500 text-white shadow-md active:scale-95">⏪ -10s</button>
+        <button onclick="mediaControl('avancer10')" class="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-500 text-white shadow-md active:scale-95">+10s ⏩</button>
+      </div>
+      <!-- Volume control intégré ICI -->
+      <div class="mt-5">
+        <h2 class="flex items-center gap-2 text-base sm:text-lg font-semibold mb-1">
+          <span class="text-xl sm:text-2xl">🔊</span>
+          <span>Volume Système</span>
+        </h2>
+        <div class="volume-control flex flex-col items-center gap-2">
+          <div class="text-3xl sm:text-4xl font-extrabold my-2 sm:my-4 text-white/90 drop-shadow" id="volume-display">50%</div>
+          <input
+            type="range"
+            id="volume-slider"
+            min="0"
+            max="100"
+            value="50"
+            class="w-full h-3 rounded-xl bg-white/30 outline-none appearance-none border border-white/40 accent-blue-500"
+          >
+          <div class="flex justify-between w-full px-1">
+            <span class="text-[10px] opacity-70">0%</span>
+            <span class="text-[10px] opacity-70 font-semibold text-center flex-1">Glissez pour ajuster</span>
+            <span class="text-[10px] opacity-70">100%</span>
+          </div>
+        </div>
+      </div>
+      <!-- Fin volume intégré -->
+    </div>
+
+    <!-- Section Clavier -->
+    <div class="glass p-4 sm:p-5 mb-4 hidden" id="keyboard-card">
+      <h2 class="flex items-center gap-2 text-lg sm:text-xl font-semibold mb-2">
+        <span class="text-2xl sm:text-3xl">⌨️</span>
+        <span>Raccourcis Clavier</span>
+      </h2>
+      <div class="grid grid-cols-2 sm:grid-cols-2 gap-2">
+        <button onclick="shortcut('copy')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">📋 Copier</button>
+        <button onclick="shortcut('paste')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">📄 Coller</button>
+        <button onclick="shortcut('cut')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">✂️ Couper</button>
+        <button onclick="shortcut('undo')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">↩️ Annuler</button>
+        <button onclick="shortcut('redo')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">↪️ Refaire</button>
+        <button onclick="shortcut('save')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">💾 Enregistrer</button>
+        <button onclick="shortcut('selectAll')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">📑 Tout sélect.</button>
+        <button onclick="shortcut('newTab')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">🗂️ Nouv. onglet</button>
+        <button onclick="shortcut('closeTab')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">❌ Fermer onglet</button>
+        <button onclick="shortcut('refresh')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">🔄 Actualiser</button>
+        <button onclick="shortcut('altTab')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">🔀 Alt+Tab</button>
+        <button onclick="pressKey('enter')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">⏎ Entrée</button>
+        <button onclick="pressKey('backspace')" class="py-3 text-sm rounded-lg bg-white/30 hover:bg-white/60 font-semibold transition">⌫ Backspace</button>
+        <button id="text-action-btn" onclick="toggleTextAction()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold text-white shadow transition-all">� Récupérer texte</button>
+      </div>
+      <div class="mt-3 relative">
+        <input type="text" id="text-input" placeholder="Tapez du texte..." class="w-full py-3 px-3 pr-10 rounded-xl border-2 border-white/30 bg-white/15 text-white text-sm mb-2 outline-none placeholder:text-white/70 focus:border-blue-400 transition" oninput="updateTextButton()">
+        <button id="clear-text-btn" onclick="clearTextInput()" class="absolute right-2 top-2 w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center text-white font-bold text-xl transition opacity-0 pointer-events-none" style="display: none;">×</button>
+      </div>
+    </div>
+
+    <!-- Section Système -->
+    <div class="glass p-4 sm:p-5 mb-4 hidden" id="system-card">
+      <h2 class="flex items-center gap-2 text-lg sm:text-xl font-semibold mb-2">
+        <span class="text-2xl sm:text-3xl">⚙️</span>
+        <span>Contrôle Système</span>
+      </h2>
+      <div class="grid grid-cols-2 gap-2 sm:gap-3">
+        <button onclick="systemControl('verrouiller')" class="px-3 py-3 sm:py-4 rounded-2xl bg-amber-500 text-white font-semibold shadow-lg active:scale-95 text-xs sm:text-base">🔒 Verrouiller</button>
+        <button onclick="systemControl('veille')" class="px-3 py-3 sm:py-4 rounded-2xl bg-blue-500 text-white font-semibold shadow-lg active:scale-95 text-xs sm:text-base">😴 Veille</button>
+        <button onclick="systemControl('redemarrer')" class="px-3 py-3 sm:py-4 rounded-2xl bg-orange-500 text-white font-semibold shadow-lg active:scale-95 text-xs sm:text-base">🔄 Redémarrer</button>
+        <button onclick="systemControl('eteindre')" class="px-3 py-3 sm:py-4 rounded-2xl bg-red-500 text-white font-semibold shadow-lg active:scale-95 text-xs sm:text-base">⚡ Éteindre</button>
+      </div>
+      <p class="mt-3 text-[11px] opacity-70 text-center">⚠️ Actions irréversibles</p>
+    </div>
+
+    <!-- Déconnexion -->
+    <!-- SUPPRIMÉ de la liste principale, voir tab bar en bas -->
+  </div>
+
+  <!-- BOTTOM TAB BAR CIRCULAIRE -->
+  <nav class="circular-tab-bar" id="tabBar" style="display:none;">
+    <div class="circular-tab-item active" data-section="trackpad">
+      <button type="button" tabindex="0" aria-label="Trackpad" onclick="showSectionTab('trackpad', this)">
+        🖱️
+      </button>
+      <div class="circular-tab-label">Trackpad</div>
+    </div>
+    <div class="circular-tab-item" data-section="media">
+      <button type="button" tabindex="0" aria-label="Media" onclick="showSectionTab('media', this)">
+        🎵
+      </button>
+      <div class="circular-tab-label">Média</div>
+    </div>
+    <div class="circular-tab-item" data-section="keyboard">
+      <button type="button" tabindex="0" aria-label="Clavier" onclick="showSectionTab('keyboard', this)">
+        ⌨️
+      </button>
+      <div class="circular-tab-label">Clavier</div>
+    </div>
+    <div class="circular-tab-item" data-section="system">
+      <button type="button" tabindex="0" aria-label="Système" onclick="showSectionTab('system', this)">
+        ⚙️
+      </button>
+      <div class="circular-tab-label">Système</div>
+    </div>
+    <!-- SUPPRIMER la déconnexion d'ici (déplacé plus bas) -->
+  </nav>
+
+  <!-- Nouvelle déconnexion EN DESSOUS de la tab bar -->
+  <!-- <div class="disconnect-bottom-container" style="bottom: -78px;">
+    <div id="disconnect-bottom">
+      <button type="button" aria-label="Déconnexion" onclick="disconnect()" class="deco-btn w-16 h-16 text-2xl flex items-center justify-center mx-auto mb-1">
+        🔌
+      </button>
+      <div class="circular-tab-label deco-label">Déconnexion</div>
+    </div>
+  </div> -->
+
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    let socket = null;
+  let qrScanner = null;
+  let qrFileScanner = null;
+    let isScanning = false;
+
+    const statusEl = document.getElementById('status');
+    const connectionCard = document.getElementById('connection-card');
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeDisplay = document.getElementById('volume-display');
+    const serverUrlInput = document.getElementById('server-url');
+    const qrScannerDiv = document.getElementById('qr-scanner');
+    const scanBtn = document.getElementById('scan-btn');
+    const tabBar = document.getElementById('tabBar');
+    const disconnectBottom = document.getElementById('disconnect-bottom'); // Nouveau bouton de déconnexion EN DESSOUS
+
+    // Hide tab bar by default - only show on connection
+    function showTabBar(show) {
+      if (tabBar) tabBar.style.display = show ? "flex" : "none";
+      if (disconnectBottom) disconnectBottom.style.display = show ? "flex" : "none";
+    }
+
+    // Toggle QR Scanner
+    async function toggleQRScanner() {
+      if (isScanning) {
+        stopScanning();
+      } else {
+        startScanning();
+      }
+    }
+
+    function showCameraHelp(err) {
+      const banner = document.getElementById('camera-warning');
+      const textEl = document.getElementById('camera-warning-text');
+      const httpsBtn = document.getElementById('open-https-btn');
+      let message = '';
+      try {
+        message = String(err && (err.message || err)) || 'Erreur inconnue';
+      } catch (_) {
+        message = 'Erreur inconnue';
+      }
+
+      const insecure = !window.isSecureContext;
+      let hint = '';
+      if (insecure) {
+        hint = " Cette page n'est pas sécurisée (HTTP). La caméra est autorisée uniquement en HTTPS ou sur localhost.";
+        if (location.hostname !== 'localhost') {
+          httpsBtn && httpsBtn.classList.remove('hidden');
+        }
+      } else if (message.includes('NotAllowedError')) {
+        hint = ' Permission refusée. Vérifiez les autorisations caméra dans votre navigateur.';
+      } else if (message.includes('NotFoundError')) {
+        hint = ' Aucune caméra détectée sur cet appareil.';
+      } else if (message.includes('NotReadableError')) {
+        hint = ' La caméra est utilisée par une autre application.';
+      } else if (message.includes('NotSupportedError')) {
+        hint = " Votre navigateur ne prend pas en charge l'accès caméra dans ce contexte.";
+      } else {
+        hint = " Votre navigateur a bloqué l'accès à la caméra.";
+      }
+
+      if (textEl) textEl.textContent = `${message}.${hint}`;
+      banner && banner.classList.remove('hidden');
+    }
+
+    function openHttpsVersion() {
+      try {
+        const url = new URL(window.location.href);
+        url.protocol = 'https:';
+        window.location.href = url.toString();
+      } catch (_) {}
+    }
+
+    async function startScanning() {
+      try {
+        // Camera requires a secure context (https or localhost). If not, show help and stop.
+        if (!window.isSecureContext && location.hostname !== 'localhost') {
+          showCameraHelp('Contexte non sécurisé: la caméra est bloquée en HTTP.');
+          return;
+        }
+        qrScannerDiv.classList.remove('hidden');
+        scanBtn.textContent = '❌ Arrêter le scan';
+        isScanning = true;
+
+        qrScanner = new Html5Qrcode("qr-video");
+
+        await qrScanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          (decodedText) => handleDecoded(decodedText)
+        );
+      } catch (err) {
+        showCameraHelp(err);
+        stopScanning();
+      }
+    }
+
+    function stopScanning() {
+      if (qrScanner) {
+        qrScanner.stop().catch(() => {});
+        qrScanner = null;
+      }
+      qrScannerDiv.classList.add('hidden');
+      scanBtn.textContent = '📷 Scanner QR Code';
+      isScanning = false;
+    }
+
+    // Fallback: scan depuis image
+    function openQrFilePicker() {
+      const fi = document.getElementById('qr-file-input');
+      if (fi) fi.click();
+    }
+
+    document.getElementById('qr-file-input')?.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        if (!qrFileScanner) qrFileScanner = new Html5Qrcode('qr-file-canvas');
+        const decodedText = await qrFileScanner.scanFile(file, false);
+        handleDecoded(decodedText);
+      } catch (err) {
+        console.warn('Décodage QR depuis image échoué:', err);
+        alert('Impossible de lire le QR depuis la photo. Essayez une autre photo ou utilisez HTTPS pour activer la caméra.');
+      } finally {
+        e.target.value = '';
+      }
+    });
+
+    // Élément container pour le scanner fichier (reste caché)
+  </script>
+  <div id="qr-file-canvas" class="hidden" aria-hidden="true"></div>
+  <script>
+    function handleDecoded(decodedText) {
+      try { console.log('📷 QR Code scanné:', decodedText); } catch (_) {}
+
+      // Connexion directe via QR code
+      if (typeof decodedText === 'string') {
+        try {
+          const urlObj = new URL(decodedText);
+          // Extraire le paramètre serveur
+          const serverParam = urlObj.searchParams.get('server');
+          if (serverParam) {
+            stopScanning();
+            const serverUrl = decodeURIComponent(serverParam);
+            connectToServer(serverUrl);
+            return;
+          }
+          // Fallback : tenter une connexion directe à l'URL scannée
+          stopScanning();
+          connectToServer(decodedText);
+          return;
+        } catch (_) {
+          // si ce n'est pas une URL valide, continuer
+        }
+      }
+
+      // Ancien format JSON
+      try {
+        const data = JSON.parse(decodedText);
+        if (data.type === 'ermot-server' && data.url) {
+          serverUrlInput.value = ensureHttpsUrl(data.url);
+          stopScanning();
+          connectManual();
+          return;
+        }
+      } catch (_) {}
+
+      // Sinon, si c'est une URL brut, tentative de redirection
+      try {
+        const u = new URL(decodedText);
+        if (u.hostname !== 'localhost') u.protocol = 'https:';
+        stopScanning();
+        window.location.href = u.toString();
+        return;
+      } catch (_) {}
+
+      console.warn('⚠️ Format de QR code non reconnu:', decodedText);
+      alert('QR non reconnu. Utilisez un QR Ermot ou une URL valide.');
+    }
+
+    // Connexion
+    function connectManual() {
+      const url = ensureHttpsUrl(serverUrlInput.value.trim());
+      if (!url) {
+        alert('Veuillez entrer une URL');
+        return;
+      }
+      connect(url);
+    }
+
+    function connect(url) {
+      statusEl.textContent = 'Connexion...';
+      statusEl.className = 'status';
+
+      console.log('🔌 Tentative de connexion à:', url);
+
+      function flipProtocol(u) {
+        try {
+          const o = new URL(u);
+          o.protocol = (o.protocol === 'https:') ? 'http:' : 'https:';
+          console.log('🔄 Changement de protocole:', o.toString());
+          return o.toString();
+        } catch(err) {
+          console.error('❌ Erreur flip protocole:', err);
+          return u;
+        }
+      }
+
+      function tryConnect(targetUrl, triedFallback = false) {
+        console.log(`📡 Connexion à ${targetUrl} (fallback: ${triedFallback})`);
+
+        // Options de connexion Socket.IO
+        const opts = {
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          timeout: 5000,
+          transports: ['websocket', 'polling']
+        };
+
+        socket = io(targetUrl, opts);
+
+        socket.on('connect', () => {
+          console.log('✅ Connecté au serveur!');
+          statusEl.textContent = 'Connecté ✓';
+          statusEl.className = 'status connected';
+          connectionCard.classList.add('hidden');
+
+          // Afficher tab bar circulaire (navigation principale)
+          showTabBar(true);
+          showSectionTab('trackpad');
+
+          stopScanning();
+
+          // Sauvegarder l'URL telle qu'utilisée
+          localStorage.setItem('ermot-server-url', targetUrl);
+        });
+
+        socket.on('disconnect', () => {
+          statusEl.textContent = 'Déconnecté';
+          statusEl.className = 'status disconnected';
+          disconnect();
+        });
+
+        socket.on('connect_error', (error) => {
+          console.error('❌ Erreur de connexion:', error);
+          console.error('Détails:', error && error.message);
+
+          if (!triedFallback) {
+            const fallback = flipProtocol(targetUrl);
+            console.log('🔄 Tentative avec protocole alternatif:', fallback);
+            tryConnect(fallback, true);
+          } else {
+            const errorMsg = error && error.message ? error.message : 'inconnue';
+            console.error('❌ Échec de connexion après fallback:', errorMsg);
+            alert('Erreur de connexion: ' + errorMsg + '\nVérifiez que le serveur est accessible et que les ports ne sont pas bloqués.');
+            statusEl.textContent = 'Erreur de connexion';
+            statusEl.className = 'status disconnected';
+          }
+        });
+
+        socket.on('error', (error) => {
+          console.error('❌ Erreur Socket.IO:', error);
+        });
+
+        socket.on('disconnect', (reason) => {
+          console.log('📴 Déconnexion temporaire, raison:', reason);
+          statusEl.textContent = 'Reconnexion...';
+          statusEl.className = 'status';
+          // La reconnexion est gérée automatiquement par Socket.IO
+        });
+
+        socket.on('volumeActuel', (data) => {
+          const volume = data.data;
+          if (volumeSlider) volumeSlider.value = volume;
+          if (volumeDisplay) volumeDisplay.textContent = `${volume}%`;
+        });
+
+        // Debug: retour des actions souris
+        socket.on('souris:resultat', (res) => {
+          try { console.log('[SOURIS RESULTAT]', res); } catch(_) {}
+        });
+      }
+
+      tryConnect(url);
+    }
+
+    function disconnect() {
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+      }
+      connectionCard.classList.remove('hidden');
+
+      // Cacher toutes les cartes de contrôle + les sections principales
+      showTabBar(false);
+      document.getElementById('trackpad-card').classList.add('hidden');
+      document.getElementById('media-card').classList.add('hidden');
+      document.getElementById('keyboard-card').classList.add('hidden');
+      document.getElementById('system-card').classList.add('hidden');
+      statusEl.textContent = 'Déconnecté';
+      statusEl.className = 'status disconnected';
+    }
+
+    // === NAVIGATION ENTRE SECTIONS - circular tab bar ===
+    function showSectionTab(section, el) {
+      // Hide all
+      document.getElementById('trackpad-card').classList.add('hidden');
+      document.getElementById('media-card').classList.add('hidden');
+      document.getElementById('keyboard-card').classList.add('hidden');
+      document.getElementById('system-card').classList.add('hidden');
+      // Show requested
+      document.getElementById(`${section}-card`).classList.remove('hidden');
+
+      // Tab bar state (highlight current)
+      if (tabBar) {
+        Array.from(tabBar.children).forEach(tabItem => {
+          if(tabItem.classList && tabItem.classList.contains("circular-tab-item")) {
+            tabItem.classList.remove("active");
+            if(tabItem.getAttribute("data-section") === section) {
+              tabItem.classList.add("active");
+            }
+          }
+        });
+      }
+    }
+
+    // For fallback/legacy nav-card compatibility, keep showSection still acting (but user cannot reach normally)
+    function showSection(section) {
+      showSectionTab(section);
+    }
+
+    // === CONTRÔLE SOURIS (Trackpad amélioré) ===
+  const trackpad = document.getElementById('trackpad');
+  const sensitivitySlider = document.getElementById('sensitivity-slider');
+  const scrollSensitivitySlider = document.getElementById('scroll-sensitivity-slider');
+  const sensitivityModal = document.getElementById('sensitivity-modal');
+  const pointerSensValue = document.getElementById('pointer-sens-value');
+  const scrollSensValue = document.getElementById('scroll-sens-value');
+  const scrollInvertToggle = document.getElementById('scroll-invert-toggle');
+
+  // Seuils et temporisations pour les gestes
+  const LONG_PRESS_MS = 500;           // durée d'appui pour clic droit (1 doigt immobile)
+  const MOVE_CANCEL_THRESHOLD_SQ = 100; // ~10px de déplacement annule le long press
+
+    let pointerSensitivity = parseFloat(sensitivitySlider ? sensitivitySlider.value : '1.8');
+    let scrollSensitivity = parseFloat(scrollSensitivitySlider ? scrollSensitivitySlider.value : '2.5');
+
+    function openSensitivityPopup() {
+      if (!sensitivityModal) return;
+      // Sync current values and labels
+      if (sensitivitySlider) {
+        sensitivitySlider.value = String(pointerSensitivity);
+        if (pointerSensValue) pointerSensValue.textContent = String(pointerSensitivity);
+      }
+      if (scrollSensitivitySlider) {
+        scrollSensitivitySlider.value = String(scrollSensitivity);
+        if (scrollSensValue) scrollSensValue.textContent = String(scrollSensitivity);
+      }
+      if (scrollInvertToggle) {
+        scrollInvertToggle.checked = !!scrollInvert;
+      }
+      sensitivityModal.classList.remove('hidden');
+      sensitivityModal.classList.add('flex');
+    }
+
+    function closeSensitivityPopup() {
+      if (!sensitivityModal) return;
+      sensitivityModal.classList.add('hidden');
+      sensitivityModal.classList.remove('flex');
+    }
+
+    if (sensitivitySlider) {
+      sensitivitySlider.addEventListener('input', (e) => {
+        pointerSensitivity = parseFloat(e.target.value);
+        if (pointerSensValue) pointerSensValue.textContent = e.target.value;
+      });
+    }
+    if (scrollSensitivitySlider) {
+      scrollSensitivitySlider.addEventListener('input', (e) => {
+        scrollSensitivity = parseFloat(e.target.value);
+        if (scrollSensValue) scrollSensValue.textContent = e.target.value;
+      });
+    }
+    if (scrollInvertToggle) {
+      scrollInvertToggle.addEventListener('change', (e) => {
+        scrollInvert = !!e.target.checked;
+        try { localStorage.setItem('ermot-scroll-invert', scrollInvert ? '1' : '0'); } catch(_) {}
+      });
+    }
+
+    let startX = 0;
+    let startY = 0;
+    let lastX = 0;
+    let lastY = 0;
+    let lastScrollY = 0; // Position Y pour le scroll à 2 doigts
+    let pendingDX = 0;
+    let pendingDY = 0;
+    let rafId = null;
+    let touchStartTime = 0;
+    let movedDistanceSq = 0;
+    let lastTapTime = 0;
+    let longPressTimer = null;
+    let longPressTriggered = false;
+    let activeTouchCount = 0;
+    let scrollInvert = true; // doigt vers le bas => scroll vers le bas
+
+    // Charger préférences locales
+    try {
+      const savedInv = localStorage.getItem('ermot-scroll-invert');
+      if (savedInv != null) scrollInvert = savedInv === '1';
+    } catch (_) {}
+
+    try { console.log('[SCROLL CONFIG] scrollSensitivity=', scrollSensitivity, 'invert=', scrollInvert); } catch(_) {}
+
+    function pumpMove() {
+      rafId = null;
+      if (!socket || !socket.connected) return;
+      const dx = Math.trunc(pendingDX);
+      const dy = Math.trunc(pendingDY);
+      if (dx !== 0 || dy !== 0) {
+        socket.emit('souris:deplacer', { x: dx, y: dy });
+        pendingDX -= dx;
+        pendingDY -= dy;
+      }
+      if (Math.abs(pendingDX) >= 1 || Math.abs(pendingDY) >= 1) {
+        rafId = requestAnimationFrame(pumpMove);
+      }
+    }
+
+    trackpad.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touches = e.touches;
+      activeTouchCount = touches.length;
+      longPressTriggered = false;
+      movedDistanceSq = 0;
+      touchStartTime = Date.now();
+
+      // Base sur le premier point de contact pour mouvement
+      const t = touches[0];
+      startX = lastX = t.clientX;
+      startY = lastY = t.clientY;
+
+      // Pour le scroll à 2 doigts, init avec moyenne Y
+      // DÉSACTIVÉ: On utilise la barre latérale pour le scroll
+      /*
+      if (activeTouchCount === 2) {
+        lastScrollY = (touches[0].clientY + touches[1].clientY) / 2;
+        try { console.log('[2-FINGER SCROLL] start at Y=', lastScrollY); } catch(_) {}
+      }
+      */
+
+      // Long press (clic droit) si 1 doigt immobile > 500ms
+      if (activeTouchCount === 1) {
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(() => {
+          if (!longPressTimer) return;
+          longPressTriggered = true;
+          longPressTimer = null;
+          mouseClick('right');
+        }, LONG_PRESS_MS);
+      }
+    }, { passive: false });
+
+    trackpad.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touches = e.touches;
+      activeTouchCount = touches.length;
+
+      // Annule long press si on bouge trop (1 doigt) ou si on passe à 2 doigts
+      if (activeTouchCount !== 1 && longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+
+      if (activeTouchCount === 1) {
+        // 1 DOIGT = DÉPLACEMENT DU CURSEUR
+        const t = touches[0];
+        // Si déplacement depuis le point de départ dépasse le seuil, annuler le long press
+        if (longPressTimer) {
+          const totalDx = t.clientX - startX;
+          const totalDy = t.clientY - startY;
+          const traveledSq = totalDx * totalDx + totalDy * totalDy;
+          if (traveledSq > MOVE_CANCEL_THRESHOLD_SQ) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+          }
+        }
+
+        const dx = (t.clientX - lastX) * pointerSensitivity;
+        const dy = (t.clientY - lastY) * pointerSensitivity;
+        pendingDX += dx;
+        pendingDY += dy;
+        movedDistanceSq += dx * dx + dy * dy;
+        lastX = t.clientX;
+        lastY = t.clientY;
+        if (!rafId) rafId = requestAnimationFrame(pumpMove);
+      }
+      // 2 DOIGTS = SCROLL DÉSACTIVÉ (utiliser la barre latérale)
+      /*
+      else if (activeTouchCount === 2) {
+        // 2 DOIGTS = SCROLL VERTICAL (SIMPLE ET DIRECT)
+        const yAvg = (touches[0].clientY + touches[1].clientY) / 2;
+        const dy = (yAvg - lastScrollY) * scrollSensitivity;
+        lastScrollY = yAvg;
+
+        if (socket && socket.connected && Math.abs(dy) >= 0.5) {
+          const sign = scrollInvert ? -1 : 1;
+          const amount = sign * Math.round(dy * 2); // multiplier pour plus de réactivité
+          try { console.log('[2-FINGER SCROLL] dy=', dy, 'amount=', amount, 'connected=', socket.connected); } catch(_) {}
+          socket.emit('souris:scroll', { amount });
+
+          // Feedback visuel du trackpad
+          trackpad.style.background = amount > 0 ? 'rgba(100,255,100,0.15)' : 'rgba(255,100,100,0.15)';
+          setTimeout(() => { trackpad.style.background = 'rgba(255,255,255,0.2)'; }, 100);
+        }
+      }
+      */
+    }, { passive: false });
+
+    trackpad.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      clearTimeout(longPressTimer);
+      const now = Date.now();
+      const duration = now - touchStartTime;
+      const moveThresholdSq = MOVE_CANCEL_THRESHOLD_SQ; // ~10px
+
+      // Deux doigts relâchés rapidement sans mouvement => clic droit
+      if (activeTouchCount === 2 && duration < 250 && movedDistanceSq < moveThresholdSq) {
+        mouseClick('right');
+      }
+
+      // Tape simple / double-tape (clic gauche / double-clic)
+      if (!longPressTriggered && activeTouchCount === 1 && duration < 200 && movedDistanceSq < moveThresholdSq) {
+        if (now - lastTapTime < 300) {
+          // Double-tap => double-clic
+          if (socket && socket.connected) {
+            socket.emit('souris:doubleClic');
+          }
+          lastTapTime = 0;
+        } else {
+          mouseClick('left');
+          lastTapTime = now;
+        }
+      }
+
+      activeTouchCount = Math.max(0, e.touches.length);
+    }, { passive: false });
+
+    trackpad.addEventListener('touchcancel', (e) => {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+      activeTouchCount = 0;
+    }, { passive: false });
+
+    // Empêcher le menu contextuel natif du navigateur sur appui long
+    trackpad.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+
+    function mouseClick(button) {
+      if (socket && socket.connected) {
+        socket.emit('souris:clic', { button });
+        // Feedback visuel
+        trackpad.style.background = 'rgba(255,255,255,0.4)';
+        setTimeout(() => {
+          trackpad.style.background = 'rgba(255,255,255,0.2)';
+        }, 100);
+      }
+    }
+
+    // === CONTRÔLE MULTIMÉDIA ===
+    function mediaControl(action) {
+      if (socket && socket.connected) {
+        socket.emit(`media:${action}`);
+        console.log(`🎵 Action média: ${action}`);
+      }
+    }
+
+    // === CONTRÔLE CLAVIER ===
+    function shortcut(action) {
+      if (socket && socket.connected) {
+        socket.emit('clavier:raccourci', { action });
+        console.log(`⌨️ Raccourci: ${action}`);
+      }
+    }
+
+    function pressKey(key) {
+      if (socket && socket.connected) {
+        socket.emit('clavier:touche', { key });
+        console.log(`⌨️ Touche pressée: ${key}`);
+      }
+    }
+
+    function typeText() {
+      const textInput = document.getElementById('text-input');
+      const text = textInput.value;
+
+      if (socket && socket.connected && text) {
+        socket.emit('clavier:ecrire', { text });
+        console.log(`📝 Texte envoyé: ${text}`);
+        textInput.value = '';
+        updateTextButton(); // Mettre à jour le bouton après envoi
+      }
+    }
+
+    function getClipboardText() {
+      if (socket && socket.connected) {
+        console.log(`📥 Récupération du texte sélectionné...`);
+
+        // Feedback visuel - changement temporaire du bouton
+        const textActionBtn = document.getElementById('text-action-btn');
+        const originalText = textActionBtn ? textActionBtn.textContent : '';
+        if (textActionBtn) {
+          textActionBtn.textContent = '⏳ Récupération...';
+          textActionBtn.disabled = true;
+        }
+
+        // D'abord, copier la sélection actuelle (Ctrl+C)
+        socket.emit('clavier:raccourci', { action: 'copy' });
+        console.log('📋 Copie de la sélection en cours...');
+
+        // Attendre un peu que la copie se fasse, puis récupérer le presse-papiers
+        setTimeout(() => {
+          socket.emit('clavier:recupererTexte');
+
+          // Écouter la réponse du serveur
+          socket.once('clavier:texteRecupere', (data) => {
+            // Restaurer le bouton
+            if (textActionBtn) {
+              textActionBtn.disabled = false;
+            }
+
+            const textInput = document.getElementById('text-input');
+            if (data.error) {
+              console.error('❌ Erreur:', data.error);
+              alert('Erreur lors de la récupération du texte: ' + data.error);
+              if (textActionBtn) textActionBtn.textContent = originalText;
+              return;
+            }
+            if (textInput) {
+              if (data.text && data.text.trim().length > 0) {
+                textInput.value = data.text;
+                console.log(`✅ Texte récupéré (${data.text.length} caractères)`);
+              } else {
+                console.log('ℹ️ Aucun texte sélectionné');
+                textInput.value = '';
+                alert('ℹ️ Aucun texte sélectionné sur le PC. Sélectionnez d\'abord du texte.');
+              }
+              updateTextButton(); // Mettre à jour le bouton après récupération
+            }
+          });
+        }, 150); // Délai pour laisser le temps au Ctrl+C de s'exécuter
+      }
+    }
+
+    // Met à jour le bouton en fonction du contenu du champ de saisie
+    function updateTextButton() {
+      const textInput = document.getElementById('text-input');
+      const textActionBtn = document.getElementById('text-action-btn');
+      const clearBtn = document.getElementById('clear-text-btn');
+
+      if (!textInput || !textActionBtn) return;
+
+      const hasText = textInput.value.trim().length > 0;
+
+      // Afficher/cacher le bouton clear
+      if (clearBtn) {
+        if (hasText) {
+          clearBtn.style.display = 'flex';
+          clearBtn.style.opacity = '1';
+          clearBtn.style.pointerEvents = 'auto';
+        } else {
+          clearBtn.style.opacity = '0';
+          clearBtn.style.pointerEvents = 'none';
+          setTimeout(() => {
+            if (textInput.value.trim().length === 0) {
+              clearBtn.style.display = 'none';
+            }
+          }, 200);
+        }
+      }
+
+      if (hasText) {
+        // Si du texte est présent, afficher "Envoyer"
+        textActionBtn.textContent = '📝 Envoyer le texte';
+        textActionBtn.className = 'w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-white shadow transition-all';
+      } else {
+        // Si vide, afficher "Récupérer"
+        textActionBtn.textContent = '📥 Récup. sélection';
+        textActionBtn.className = 'w-full py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold text-white shadow transition-all';
+      }
+    }
+
+    // Efface le contenu du champ de saisie
+    function clearTextInput() {
+      const textInput = document.getElementById('text-input');
+      if (textInput) {
+        textInput.value = '';
+        textInput.focus();
+        updateTextButton();
+      }
+    }
+
+    // Action toggle selon l'état du bouton
+    function toggleTextAction() {
+      const textInput = document.getElementById('text-input');
+      if (!textInput) return;
+
+      if (textInput.value.trim().length > 0) {
+        // Si du texte est présent, l'envoyer
+        typeText();
+      } else {
+        // Si vide, récupérer le presse-papiers
+        getClipboardText();
+      }
+    }
+
+    // === CONTRÔLE SYSTÈME ===
+    function systemControl(action) {
+      // Confirmation pour les actions critiques
+      const confirmActions = ['redemarrer', 'eteindre'];
+      if (confirmActions.includes(action)) {
+        const messages = {
+          'redemarrer': 'Redémarrer le PC ?',
+          'eteindre': 'Éteindre le PC ?'
+        };
+
+        if (!confirm(messages[action])) {
+          return;
+        }
+      }
+
+      if (socket && socket.connected) {
+        socket.emit(`systeme:${action}`);
+        console.log(`⚙️ Action système: ${action}`);
+      }
+    }
+
+    // Contrôle du volume (DOIT être toujours fonctionnel car il est dans la section media)
+    if (volumeSlider) {
+      volumeSlider.addEventListener('input', (e) => {
+        const volume = parseInt(e.target.value);
+        if (volumeDisplay) volumeDisplay.textContent = `${volume}%`;
+      });
+      volumeSlider.addEventListener('change', (e) => {
+        const volume = parseInt(e.target.value);
+        if (socket && socket.connected) {
+          socket.emit('changerVolume', { data: volume });
+        }
+      });
+    }
+
+    // Fonction pour obtenir les paramètres d'URL
+    function getUrlParameter(name) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    }
+
+    // Résoudre un code de session en URL serveur
+    async function resolveCode(code) {
+      try {
+        statusEl.textContent = 'Résolution du code...';
+        console.log('🔑 Résolution du code:', code);
+
+        const response = await fetch(`/api/resolve?code=${code}`);
+        const data = await response.json();
+
+        if (data.success) {
+          console.log('✅ Code résolu:', data.serverUrl);
+          return ensureHttpsUrl(data.serverUrl);
+        } else {
+          console.error('❌ Code invalide:', data.error);
+          alert('Code invalide ou expiré. Scannez à nouveau le QR code.');
+          return null;
+        }
+      } catch (error) {
+        console.error('❌ Erreur de résolution:', error);
+        alert('Erreur de connexion au serveur');
+        return null;
+      }
+    }
+
+    // Auto-connexion au chargement
+    window.addEventListener('load', async () => {
+      console.log('📱 Client mobile chargé');
+
+      // Se connecter directement à l'URL du serveur
+      const serverParam = getUrlParameter('server');
+      if (serverParam) {
+        try {
+          console.log('🔗 Paramètre serveur détecté:', serverParam);
+          const serverUrl = decodeURIComponent(serverParam);
+          console.log('🔗 URL décodée:', serverUrl);
+
+          // Valider l'URL
+          const urlObj = new URL(serverUrl);
+          if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+            throw new Error('Protocole non supporté: ' + urlObj.protocol);
+          }
+
+          // Connexion avec l'URL validée
+          connect(serverUrl);
+        } catch (error) {
+          console.error('❌ Erreur de connexion automatique:', error);
+          alert('Erreur lors de la connexion: ' + error.message);
+        }
+
+        if (serverUrl) {
+          serverUrlInput.value = ensureHttpsUrl(serverUrl);
+          // Connexion automatique
+          setTimeout(() => {
+            connect(ensureHttpsUrl(serverUrl));
+          }, 500);
+        }
+      } else {
+        // Sinon, utiliser l'URL sauvegardée
+        const savedUrl = localStorage.getItem('ermot-server-url');
+        if (savedUrl) {
+          serverUrlInput.value = ensureHttpsUrl(savedUrl);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

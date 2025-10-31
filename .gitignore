@@ -1,0 +1,61 @@
+# Dépendances
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build
+out/
+dist/
+.webpack/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Environnement
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Certificats
+*.pfx
+*.p12
+*.key
+*.pem
+cert.pfx
+
+# CSS généré
+src/renderer/output.css
+
+# Cache
+.cache/
+.electron/
+.parcel-cache/
+
+# Tests
+coverage/
+.nyc_output/
+
+# Temporaire
+tmp/
+temp/
+*.tmp
+
+# Ne pas ignorer les clients et serveur
+!example-client.html
+!mobile-client.html
+!serve-mobile.js
+

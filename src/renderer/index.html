@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Ermot Server - Interface de contrôle à distance moderne et élégante" />
+    <meta name="keywords" content="remote control, server, Ermot, contrôle à distance" />
+    <meta name="author" content="Ermot Team" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data:; connect-src 'self';"
+    />
+    <meta
+      http-equiv="X-Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data:;"
+    />
+    <!-- Preload critical resources -->
+    <link rel="preload" href="../../6791569.jpg" as="image" />
+    <link rel="preload" href="./renderer.js" as="script" />
+
+    <!-- DNS prefetch for external resources -->
+    <link rel="dns-prefetch" href="//cdn.tailwindcss.com" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Ermot - Contrôle à distance</title>
+    <style>
+      /* Glassmorphism utilities améliorées */
+      :root {
+        --glass-bg: rgba(20,20,20,0.78);
+        --glass-border: rgba(255,255,255,0.28);
+        --glass-shadow: 0 8px 24px 0 rgba(0,0,0,0.22), 0 2px 6px 0 rgba(0,0,0,0.1);
+        --glass-blur: 6px; /* réduit pour moins de flou */
+        --glass-radius: 14px;
+      }
+
+      /* Volume meter and slider styling - merged visuals with tick bars */
+      .volume-meter {
+        position: relative;
+        height: 10px; /* visual height for the bar */
+        border-radius: 999px;
+        background: rgba(255,255,255,0.04);
+        overflow: hidden;
+      }
+
+      /* subtle vertical ticks (bars) across the meter */
+      .volume-meter::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: repeating-linear-gradient(
+          to right,
+          rgba(255,255,255,0.025) 0 1px,
+          transparent 1px 12px
+        );
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      /* colored fill (positioned under the tick overlay) */
+      .volume-meter #volume-fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        transition: width 180ms cubic-bezier(0.4,0,0.2,1);
+        z-index: 0;
+      }
+
+      /* Make the visual meter non-interactive so the user cannot drag the bar itself;
+         the slider input above remains interactive. */
+      .volume-meter, .volume-meter * {
+        pointer-events: none;
+      }
+
+      /* Ensure the actual range input stays interactive and shows a pointer */
+      input[type='range'].volume-slider {
+        pointer-events: auto;
+        cursor: pointer;
+      }
+
+      /* Place the slider above the visual meter; make the track transparent so the fill shows through */
+      input[type='range'].volume-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        margin-top: 52px; /* slightly lower so the runnable track sits a bit lower over the meter */
+        background: transparent;
+        position: relative;
+        z-index: 3;
+      }
+
+      input[type='range'].volume-slider:focus { outline: none; }
+
+      /* Transparent track in WebKit/Blink */
+      input[type='range'].volume-slider::-webkit-slider-runnable-track {
+        height: 10px; /* make the clickable area bigger */
+        background: transparent;
+        border-radius: 999px;
+      }
+
+      /* Thumb styling to match the attached image */
+      input[type='range'].volume-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 10px;
+        height: 10px;
+        margin-top: 0px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #ffffff, #ffd7a6 60%);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.35), 0 0 10px rgba(255,160,60,0.06) inset;
+        border: 2px solid rgba(0,0,0,0.12);
+      }
+
+      /* Firefox track & thumb */
+      input[type='range'].volume-slider::-moz-range-track {
+        height: 10px;
+        background: transparent;
+        border-radius: 999px;
+      }
+
+      input[type='range'].volume-slider::-moz-range-thumb {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #ffffff, #ffd7a6 60%);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+        border: 2px solid rgba(0,0,0,0.12);
+      }
+      /* Disabled / read-only appearance */
+      input[type='range'].volume-slider[disabled] {
+        opacity: 0.95;
+        cursor: default;
+      }
+      .btn-sharp[disabled] {
+        opacity: 0.55 !important;
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+      }
+
+      /* ticks (vertical bars) and labels under the meter */
+      .volume-ticks {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        color: rgba(255,255,255,0.65);
+        font-size: 11px;
+        padding: 0 6px;
+      }
+
+      /* ticks should not intercept pointer events either */
+      .volume-ticks, .volume-ticks * { pointer-events: none; }
+
+      .volume-ticks .tick {
+        width: 2px;
+        height: 4px;
+        background: rgba(255,255,255,0.14);
+        border-radius: 1px;
+        display: block;
+        /* margin-bottom: 4px; */
+      }
+
+      .volume-ticks .tick-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
+
+      /* Volume bars styling */
+      .volume-bars { pointer-events: none; }
+      .volume-bars .bar {
+        flex: 1 1 0;
+        height: 20%;
+        background: rgba(255,255,255,0.06);
+        border-radius: 3px;
+        transition: background 160ms ease, height 160ms ease, transform 140ms ease;
+      }
+      /* staggered heights for visual interest */
+      .volume-bars .bar[data-index='1'] { height: 5%; }
+      .volume-bars .bar[data-index='2'] { height: 10%; }
+      .volume-bars .bar[data-index='3'] { height: 15%; }
+      .volume-bars .bar[data-index='4'] { height: 20%; }
+      .volume-bars .bar[data-index='5'] { height: 25%; }
+      .volume-bars .bar[data-index='6'] { height: 30%; }
+      .volume-bars .bar[data-index='7'] { height: 35%; }
+      .volume-bars .bar[data-index='8'] { height: 40%; }
+  .volume-bars .bar[data-index='9'] { height: 45%; }
+  .volume-bars .bar[data-index='10'] { height: 50%; }
+  /* Additional bars after doubling (11-20) */
+  .volume-bars .bar[data-index='11'] { height: 55%; }
+  .volume-bars .bar[data-index='12'] { height: 60%; }
+  .volume-bars .bar[data-index='13'] { height: 65%; }
+  .volume-bars .bar[data-index='14'] { height: 70%; }
+  .volume-bars .bar[data-index='15'] { height: 75%; }
+  .volume-bars .bar[data-index='16'] { height: 80%; }
+  .volume-bars .bar[data-index='17'] { height: 85%; }
+  .volume-bars .bar[data-index='18'] { height: 90%; }
+  .volume-bars .bar[data-index='19'] { height: 95%; }
+  .volume-bars .bar[data-index='20'] { height: 100%; }
+
+      .volume-bars .bar.active {
+        background: linear-gradient(180deg, #ffd37a, #ff6b3d);
+        /* transform: translateY(-6px); */
+      }
+      .glass {
+        background: linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        /* Conserver un léger backdrop blur pour l'effet glass, mais faible pour lisibilité */
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+        backdrop-filter: blur(var(--glass-blur));
+        border-radius: var(--glass-radius);
+        box-shadow: var(--glass-shadow);
+      }
+
+      /* Forcer les petites UI (badges, boutons, QR container) à ne pas appliquer backdrop blur
+         pour éviter un rendu flou du texte et des icônes. */
+      .no-blur, .no-blur * {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+      }
+
+      /* Rendre les boutons et badges légèrement plus opaques et nets */
+      .premium-card .btn-sharp, .premium-card .badge-sharp {
+        background-color: rgba(255,255,255,0.22);
+        border-color: rgba(255,255,255,0.36);
+        color: #ffffff;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+      }
+      .premium-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .premium-card:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      }
+      /* État actif pour les boutons déclenchés par le mobile/remote */
+      .btn-active {
+        transform: translateY(-2px) scale(1.03) !important;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.35) !important;
+        border-color: rgba(255,255,255,0.85) !important;
+        background: rgba(255,255,255,0.18) !important;
+      }
+      /* Remote pointer indicator */
+      #remote-pointer {
+        position: fixed;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: rgba(0,200,255,0.95);
+        box-shadow: 0 6px 18px rgba(0,200,255,0.15);
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 9999;
+        display: none;
+      }
+      /* Effet de brillance */
+      .shimmer {
+        position: relative;
+        overflow: hidden;
+      }
+      .shimmer::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        animation: shimmer 2s infinite;
+      }
+      @keyframes shimmer {
+        0% { left: -100%; }
+        100% { left: 100%; }
+      }
+      /* Particules flottantes */
+      .matrix-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        z-index: -2;
+      }
+      .matrix-char {
+        position: absolute;
+        color: rgba(0, 255, 100, 0.3);
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        animation: fall linear infinite;
+      }
+      @keyframes fall {
+        0% { top: -20px; opacity: 1; }
+        100% { top: 100vh; opacity: 0; }
+      }
+      /* Floating shapes */
+      .floating-shapes {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        z-index: -1;
+        pointer-events: none;
+      }
+      .floating-shape {
+        position: absolute;
+        width: 60px;
+        height: 60px;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+        border-radius: 50%;
+        animation: float 8s ease-in-out infinite;
+      }
+      .floating-shape:nth-child(1) {
+        top: 20%;
+        left: 10%;
+        animation-delay: 0s;
+      }
+      .floating-shape:nth-child(2) {
+        top: 60%;
+        left: 80%;
+        animation-delay: 2s;
+      }
+      .floating-shape:nth-child(3) {
+        top: 80%;
+        left: 20%;
+        animation-delay: 4s;
+      }
+      .floating-shape:nth-child(4) {
+        top: 30%;
+        left: 70%;
+        animation-delay: 6s;
+      }
+      @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(180deg); }
+      }
+
+      /* Amélioration des focus states pour l'accessibilité */
+      .premium-card:focus-within {
+        outline: 2px solid rgba(255, 255, 255, 0.8);
+        outline-offset: 2px;
+      }
+
+      /* Optimisation des performances avec will-change */
+      .premium-card {
+        will-change: transform;
+      }
+
+      .matrix-char {
+        will-change: transform, opacity;
+      }
+
+      /* Support pour prefers-reduced-motion */
+      @media (prefers-reduced-motion: reduce) {
+        .premium-card {
+          transition: none;
+        }
+
+        .shimmer::before {
+          animation: none;
+        }
+
+        .floating-shape {
+          animation: none;
+        }
+
+        .matrix-char {
+          animation: none;
+        }
+      }
+
+      /* Amélioration des contrastes pour l'accessibilité */
+      @media (prefers-contrast: high) {
+        :root {
+          --glass-bg: rgba(0,0,0,0.85);
+          --glass-border: rgba(255,255,255,0.4);
+        }
+        .glass {
+          background: var(--glass-bg) !important;
+          border-color: var(--glass-border) !important;
+        }
+        .premium-card button {
+          background: rgba(255,255,255,0.35) !important;
+          border-color: rgba(255,255,255,0.5) !important;
+        }
+      }
+
+      /* Optimisation pour les écrans tactiles */
+      @media (hover: none) and (pointer: coarse) {
+        .premium-card:hover {
+          transform: none;
+        }
+
+        .premium-card:active {
+          transform: translateY(-2px) scale(1.01);
+        }
+      }
+
+      /* Optimisations pour écrans plus petits */
+      @media (max-height: 900px) {
+        header {
+          padding: 0.75rem !important;
+          margin-bottom: 0.75rem !important;
+        }
+
+        .premium-card {
+          min-width: 160px !important;
+        }
+
+        .premium-card .relative {
+          padding: 0.5rem !important;
+        }
+
+        .premium-card h5 {
+          font-size: 0.875rem !important;
+          margin-bottom: 0.5rem !important;
+        }
+      }
+
+      /* Personnalisation du scrollbar pour le conteneur horizontal */
+      .overflow-x-auto::-webkit-scrollbar {
+        height: 4px;
+      }
+
+      .overflow-x-auto::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+      }
+
+      .overflow-x-auto::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
+      }
+
+      .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      /* Amélioration pour les fonds très sombres */
+      .premium-card h2, .premium-card h3, .premium-card h5 {
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      }
+
+      .premium-card p, .premium-card span {
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      }
+
+      /* Amélioration des indicateurs de statut */
+      .premium-card .inline-flex {
+        text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+      }
+
+      /* Optimisation pour écrans très larges */
+      @media (min-width: 1920px) {
+        .grid {
+          gap: 1.5rem !important;
+          padding: 1.5rem !important;
+        }
+
+        .premium-card {
+          min-height: 280px !important;
+        }
+      }
+
+      /* Amélioration de la grille pour petits écrans */
+      @media (max-width: 768px) {
+        .grid {
+          gap: 0.75rem !important;
+          padding: 0.75rem !important;
+        }
+
+        .premium-card {
+          min-height: 180px !important;
+        }
+      }
+
+      /* Watermark (filigrane) */
+      .watermark {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-25deg);
+        font-size: clamp(5rem, 12vw, 14rem);
+        font-weight: 800;
+        color: rgba(255,255,255,0.06);
+        letter-spacing: 0.08em;
+        pointer-events: none;
+        user-select: none;
+        z-index: 0;
+        mix-blend-mode: soft-light;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      /* Ensure UI is above the watermark */
+      .main-grid {
+        position: relative;
+        z-index: 1;
+      }
+
+      /* Amélioration de la grille pour petits écrans */
+      @media (prefers-reduced-motion: reduce) {
+        .watermark { transition: none; }
+      }
+
+      /* Adaptations supplémentaires pour fenêtres réduites (approx. <= 1000px) */
+      @media (max-width: 1050px) {
+        /* Réduire le filigrane pour garder de l'espace utile */
+        .watermark {
+          font-size: clamp(3rem, 9vw, 6rem);
+        }
+
+        /* Formes flottantes moins intrusives */
+        .floating-shape {
+          width: 40px;
+          height: 40px;
+        }
+
+        /* Cartes plus compactes */
+        .premium-card {
+          min-width: 140px !important;
+        }
+
+        /* Réduire les espacements généraux */
+        .grid {
+          gap: 0.6rem !important;
+          padding: 0.6rem !important;
+        }
+      }
+
+      /* Contenir les éléments décoratifs à l'intérieur du cadre d'application
+         pour éviter qu'ils ne dépassent la fenêtre réduite */
+      .app-frame {
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+        height: 100vh; /* ensure full viewport height but contained */
+        max-width: 1000px; /* match main window width */
+        margin: 0 auto;
+        border-radius: 12px;
+        background: linear-gradient(rgba(15,15,15,0.72), rgba(0,0,0,0.42)), url('../../6791569.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.25) inset;
+      }
+
+      /* Lorsqu'ils sont dans .app-frame, rendre ces éléments absolus et limités
+         au conteneur plutôt que fixed sur la fenêtre entière */
+      .app-frame .matrix-bg,
+      .app-frame .floating-shapes {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        z-index: -2;
+      }
+
+      .app-frame .watermark {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-25deg);
+        z-index: 0;
+      }
+
+      /* Pointer distant positionnement relatif au conteneur */
+      .app-frame #remote-pointer {
+        position: absolute;
+        z-index: 9999;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-white">
+    <!-- Encapsulate UI so decorative elements stay inside the app frame -->
+    <div class="app-frame mx-auto w-full max-w-[1000px]">
+      <!-- Watermark / Filigrane -->
+      <div class="watermark" aria-hidden="true">Ermot</div>
+
+      <!-- Effet de particules animées -->
+      <div class="matrix-bg" id="particles"></div>
+
+      <!-- Formes flottantes -->
+      <div class="floating-shapes">
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+      </div>
+      <div class="grid grid-cols-7 grid-rows-8 gap-4 h-[100vh] w-full p-4 overflow-auto main-grid">
+      <!-- <div class="grid grid-cols-2 grid-rows-6 gap-4 min-h-screen w-full p-4 overflow-auto main-grid"> -->
+
+        <!-- En-tête glassmorphique - span toutes les colonnes -->
+        <!-- <header class="glass col-span-full p-3 sm:p-4 text-center mb-4" role="banner">
+          <h1 class="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-black text-white mb-1" style="text-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+          🎛️ Ermot Server
+        </h1>
+        <p class="text-white text-xs md:text-sm lg:text-base opacity-90">Contrôle à distance moderne et élégant</p>
+        <div class="mt-3">
+          <div class="inline-block px-4 py-2 rounded-full text-sm font-bold bg-green-500/80 border border-white/20 shadow"
+               role="status" aria-live="polite">
+            ✓ Serveur Actif
+          </div>
+        </div>
+      </header> -->
+
+      <!-- Carte Connexion Mobile - prend plus d'espace -->
+      <article class="glass premium-card shimmer group relative overflow-hidden rounded-2xl transition-all duration-500 hover:shadow-2xl  col-span-3 row-span-6"
+               role="region" aria-labelledby="mobile-connection-title">
+        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
+             aria-hidden="true"></div>
+
+        <div class="relative p-4 h-full flex flex-col">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mr-3 shadow-lg"
+                 aria-hidden="true">
+              <span class="text-xl">📱</span>
+            </div>
+            <div>
+              <h2 id="mobile-connection-title" class="text-lg font-black tracking-tight text-white">Connexion Mobile</h2>
+              <p class="text-sm text-white/85">QR Code de connexion</p>
+            </div>
+
+            <!-- <div class="text-right ml-auto">
+              <div class="text-sm text-white/90 mb-2">
+                <span class="font-semibold">Code:</span>
+                <span id="connection-code" class="font-mono bg-white/25 px-2 py-1 rounded-lg border border-white/40"
+                      aria-label="Code de connexion" role="status">----</span>
+              </div>
+
+              <div class="text-sm text-white/75">
+                <span id="server-url" aria-label="URL du serveur" role="status">Chargement...</span>
+              </div>
+            </div> -->
+          </div>
+
+          <div class="flex-1 flex flex-row items:center md:items-start justify-center gap-4">
+            <div id="qrcode-container" class="mb-0 flex-shrink-0" role="img" aria-label="QR Code de connexion pour mobile">
+              <div class="w-16 h-16 bg-white/15 no-blur rounded-2xl flex items-center justify-center border border-white/40">
+                <span class="text-2xl md:text-3xl" aria-hidden="true">📱</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Carte Informations Application -->
+      <article class=" glass premium-card shimmer group relative overflow-hidden rounded-2xl transition-all duration-500 hover:shadow-2xl  col-span-4 row-span-4"
+               role="region" aria-labelledby="server-status-title">
+        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
+             aria-hidden="true"></div>
+
+        <div class="relative p-3 h-full flex flex-col">
+          <div class="flex items-center mb-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mr-3 shadow-lg"
+                 aria-hidden="true">
+              <span class="text-lg">🎛️</span>
+            </div>
+            <div>
+              <h3 id="server-status-title" class="text-base font-black tracking-tight text-white">Ermot Server</h3>
+              <p class="text-sm text-white/85">État de l'application</p>
+            </div>
+          </div>
+
+          <div class="flex-1 flex flex-col justify-center">
+            <div class="space-y-2">
+              <div id="server" class="flex items-center justify-between p-2 bg-white/15 no-blur rounded-lg border border-white/35">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-medium text-white">Application</span>
+                  <div class="inline-flex items-center space-x-1">
+                    <button data-action="server-add" title="Ajouter" class="text-xs px-2 py-0.5 rounded-full bg-white/10 border border-white/25 text-white no-blur">➕</button>
+                    <button data-action="server-remove" title="Supprimer" class="text-xs px-2 py-0.5 rounded-full bg-white/10 border border-white/25 text-white no-blur">➖</button>
+                  </div>
+                </div>
+                <span class="inline-flex items-center badge-sharp text-white text-xs font-bold px-2 py-1 rounded-full border border-white/40">
+                  <span class="w-1.5 h-1.5 me-1 bg-gray-300 rounded-full animate-pulse"></span>
+                  Chargement
+                </span>
+              </div>
+              <div id="server-action-status" class="text-xs text-white/70 mt-2">Action serveur: —</div>
+
+              <div id="socket.io" class="flex items-center justify-between p-2 bg-white/15 no-blur rounded-lg border border-white/35">
+                <span class="text-sm font-medium text-white">Socket.IO</span>
+                <span class="inline-flex items-center badge-sharp text-white text-xs font-bold px-2 py-1 rounded-full border border-white/40">
+                  <span class="w-1.5 h-1.5 me-1 bg-gray-300 rounded-full animate-pulse"></span>
+                  Chargement
+                </span>
+              </div>
+
+              <div id="client" class="flex items-center justify-between p-2 bg-white/15 no-blur rounded-lg border border-white/35">
+                <span class="text-sm font-medium text-white">Clients</span>
+                <span class="inline-flex items-center badge-sharp text-white text-xs font-bold px-2 py-1 rounded-full border border-white/40">
+                  <span class="w-1.5 h-1.5 me-1 bg-gray-300 rounded-full animate-pulse"></span>
+                  Chargement
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+
+
+      <!-- Carte Souris -->
+      <div class="glass premium-card shimmer group relative overflow-hidden rounded-2xl transition-all duration-500 hover:shadow-2xl  col-span-2 row-span-2">
+        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+        <div class="relative p-3 h-full flex flex-row text-center">
+          <div class="flex flex-col justify-star items-start">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mb-2 shadow-lg">
+              <span class="text-lg">🖱️</span>
+            </div>
+
+            <h5 class="text-base font-black tracking-tight text-white mb-0">Souris</h5>
+          </div>
+
+          <div class="flex-1 flex flex-col justify-center">
+            <div id="mouse-pos" class="text-xs text-white/70 mt-0" aria-live="polite">Position: —</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carte Clavier -->
+      <div class="glass premium-card sh immer group relative overflow-hidden rounded-2xl transition-all duration-500 hover:shadow-2xl  col-span-2 row-span-2">
+        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+        <div class="relative p-3 h-full flex flex-row text-center">
+          <div class="flex flex-col justify-start">
+
+            <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-lg">
+              <span class="text-lg">⌨️</span>
+            </div>
+
+            <h5 class="text-base font-black tracking-tight text-white mb-2">Clavier</h5>
+          </div>
+
+          <div class="flex-1 flex flex-col justify-center">
+            <div id="keyboard-active" class="text-sm text-white/80 mt-2">Touches actives: <span id="keyboard-active-keys" aria-live="polite">—</span></div>
+            <div id="keyboard-status" class="text-xs text-white/70 mt-1">Dernière: —</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carte Volume -->
+      <div class="glass premium-card shimmer group relative overflow-hidden rounded-2xl transition-all duration-500 hover:shadow-2xl  col-span-7 row-span-2">
+        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+        <div class="relative p-3 h-full flex flex-row text-center">
+        <!-- <div class="relative p-3 h-full flex flex-row text-center bg-amber-400"> -->
+          <div class=" flex flex-col justify-center items-start">
+            <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center mb-2 shadow-lg">
+              <span class="text-lg">🔊</span>
+            </div>
+
+            <h5 class="text-base font-black tracking-tight text-white mb-2">Volume</h5>
+
+              <div id="volume-status" class="text-xs text-white/70 mt-0">Dernière: —</div>
+          </div>
+          <div class="flex-1 flex flex-col justify-center items-center">
+            <div id="volume" class="text-2xl md:text-3xl font-black text-white mb-2 drop-shadow-lg" aria-live="polite">50%</div>
+
+            <!-- Visual volume meter -->
+            <div class="w-full max-w-2xl px-4">
+              <div class="relative" style="height:50px;">
+                <!-- Discrete volume bars -->
+                <div class="volume-bars w-full flex items-end gap-2" style="position:absolute; left:0; right:0; top:6px; height:49px;">
+                  <!-- 10 bars -->
+                  <div class="bar" data-index="1"></div>
+                  <div class="bar" data-index="2"></div>
+                  <div class="bar" data-index="3"></div>
+                  <div class="bar" data-index="4"></div>
+                  <div class="bar" data-index="5"></div>
+                  <div class="bar" data-index="6"></div>
+                  <div class="bar" data-index="7"></div>
+                  <div class="bar" data-index="8"></div>
+                  <div class="bar" data-index="9"></div>
+                  <div class="bar" data-index="10"></div>
+                  <div class="bar" data-index="11"></div>
+                  <div class="bar" data-index="12"></div>
+                  <div class="bar" data-index="13"></div>
+                  <div class="bar" data-index="14"></div>
+                  <div class="bar" data-index="15"></div>
+                  <div class="bar" data-index="16"></div>
+                  <div class="bar" data-index="17"></div>
+                  <div class="bar" data-index="18"></div>
+                  <div class="bar" data-index="19"></div>
+                  <div class="bar" data-index="20"></div>
+                </div>
+
+                <!-- Slider for direct control (on top of the bars) -->
+                <input id="volume-slider" class="volume-slider mt-0 w-full appearance-none h-2 bg-transparent" type="range" min="0" max="100" value="50" aria-label="Contrôle du volume">
+              </div>
+
+              <!-- ticks and labels -->
+              <div class="volume-ticks mt-0" aria-hidden="true">
+                <div class="tick-wrap"><span class="tick"></span><span>0</span></div>
+                <div class="tick-wrap"><span class="tick"></span><span>25</span></div>
+                <div class="tick-wrap"><span class="tick"></span><span>50</span></div>
+                <div class="tick-wrap"><span class="tick"></span><span>75</span></div>
+                <div class="tick-wrap"><span class="tick"></span><span>100</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      </div> <!-- close .grid -->
+
+      <script src="./renderer.js"></script>
+
+      <div id="remote-pointer" aria-hidden="true"></div>
+
+    </div> <!-- /.app-frame -->
+
+    <!-- Script pour effets spectaculaires -->
+    <script>
+      // Variables globales pour la gestion des performances
+      let matrixInterval = null;
+      let volumePulseInterval = null;
+      let particleCount = 0;
+      const MAX_PARTICLES = 30;
+
+      // Détection des performances de l'appareil
+      const isLowEndDevice = () => {
+        return navigator.hardwareConcurrency <= 2 ||
+               (performance.memory && performance.memory.jsHeapSizeLimit < 4294967296);
+      };
+
+      // Effet de particules Matrix optimisé
+      function createMatrixEffect() {
+        const particlesContainer = document.getElementById('particles');
+        if (!particlesContainer) return;
+
+        const chars = isLowEndDevice() ? '01' : '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+        const interval = isLowEndDevice() ? 500 : 300;
+        const maxParticles = isLowEndDevice() ? 15 : MAX_PARTICLES;
+
+        function createParticle() {
+          if (particleCount >= maxParticles) return;
+
+          const particle = document.createElement('div');
+          particle.className = 'matrix-char';
+          particle.textContent = chars[Math.floor(Math.random() * chars.length)];
+          particle.style.left = Math.random() * 100 + '%';
+          particle.style.animationDuration = (Math.random() * 3 + 2) + 's';
+          particle.style.animationDelay = Math.random() * 2 + 's';
+
+          particlesContainer.appendChild(particle);
+          particleCount++;
+
+          setTimeout(() => {
+            if (particle.parentNode) {
+              particle.remove();
+              particleCount--;
+            }
+          }, 5000);
+        }
+
+        // Créer des particules avec contrôle de fréquence
+        matrixInterval = setInterval(createParticle, interval);
+      }
+
+      // Effet de pulsation du volume optimisé
+      function addVolumePulse() {
+        const volumeElement = document.getElementById('volume');
+        if (!volumeElement) return;
+
+        volumePulseInterval = setInterval(() => {
+          requestAnimationFrame(() => {
+            volumeElement.style.transform = 'scale(1.05)';
+            setTimeout(() => {
+              volumeElement.style.transform = 'scale(1)';
+            }, 300);
+          });
+        }, 2000);
+      }
+
+      // Gestion de la visibilité pour économiser les ressources
+      function handleVisibilityChange() {
+        if (document.hidden) {
+          // Pause les animations quand la page n'est pas visible
+          if (matrixInterval) {
+            clearInterval(matrixInterval);
+            matrixInterval = null;
+          }
+          if (volumePulseInterval) {
+            clearInterval(volumePulseInterval);
+            volumePulseInterval = null;
+          }
+        } else {
+          // Reprendre les animations
+          if (!matrixInterval) createMatrixEffect();
+          if (!volumePulseInterval) addVolumePulse();
+        }
+      }
+
+      // Throttle function pour optimiser les événements
+      function throttle(func, limit) {
+        let inThrottle;
+        return function() {
+          const args = arguments;
+          const context = this;
+          if (!inThrottle) {
+            func.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+          }
+        }
+      }
+
+      // Initialiser tous les effets
+      document.addEventListener('DOMContentLoaded', function() {
+        // Démarrer les effets seulement si l'utilisateur n'a pas demandé de réduire les animations
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          createMatrixEffect();
+          addVolumePulse();
+        }
+
+        // Écouter les changements de visibilité pour économiser les ressources
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Effet de parallaxe throttlé sur le scroll
+        const handleScroll = throttle(() => {
+          const scrolled = window.pageYOffset;
+          const parallax = document.querySelector('.matrix-bg');
+          if (parallax) {
+            requestAnimationFrame(() => {
+              parallax.style.transform = `translateY(${scrolled * 0.3}px)`;
+            });
+          }
+        }, 16); // ~60fps
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        // Nettoyage lors de la fermeture
+        window.addEventListener('beforeunload', () => {
+          if (matrixInterval) clearInterval(matrixInterval);
+          if (volumePulseInterval) clearInterval(volumePulseInterval);
+        });
+
+  // Volume UI wiring
+  // Default to read-only (not modifiable) unless explicit override is provided via window.VOLUME_READ_ONLY = false
+  const VOLUME_READ_ONLY = (typeof window.VOLUME_READ_ONLY !== 'undefined') ? !!window.VOLUME_READ_ONLY : true;
+  const volumeSlider = document.getElementById('volume-slider');
+  const volumeBars = document.querySelectorAll('.volume-bars .bar');
+  const volumeText = document.getElementById('volume');
+  const volumeStatus = document.getElementById('volume-status');
+
+        function updateVolumeUI(level) {
+          level = Math.max(0, Math.min(100, Math.round(level)));
+          if (volumeText) volumeText.textContent = level + '%';
+          // map level 0-100 to 0-10 bars
+          const active = Math.round((level / 100) * volumeBars.length);
+          volumeBars.forEach((b, i) => {
+            if (i < active) b.classList.add('active'); else b.classList.remove('active');
+          });
+          if (volumeStatus) volumeStatus.textContent = `Dernière: slider @ ${new Date().toLocaleTimeString()}`;
+        }
+
+        if (volumeSlider) {
+          if (VOLUME_READ_ONLY) {
+            volumeSlider.setAttribute('disabled', 'disabled');
+            volumeSlider.tabIndex = -1;
+          } else {
+            // live update while dragging
+            volumeSlider.addEventListener('input', function(e) {
+              const val = Number(this.value);
+              updateVolumeUI(val);
+            });
+
+            // commit change on release
+            volumeSlider.addEventListener('change', function(e) {
+              const val = Number(this.value);
+              updateVolumeUI(val);
+              // dispatch a logical action so external handlers can react
+              const evt = new CustomEvent('ermot:action', { detail: { action: 'volume-set', level: val, timestamp: Date.now() } });
+              window.dispatchEvent(evt);
+            });
+
+            // keyboard support
+            volumeSlider.addEventListener('keydown', function(e) {
+              if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                this.stepDown();
+                this.dispatchEvent(new Event('input'));
+              } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                this.stepUp();
+                this.dispatchEvent(new Event('input'));
+              }
+            });
+          }
+        }
+
+        // Ensure Mute/Max buttons update UI immediately (these have data-action and will be caught by the document click listener too)
+        document.querySelectorAll('[data-action="volume-mute"]').forEach(btn => {
+          if (VOLUME_READ_ONLY) {
+            btn.setAttribute('disabled', 'disabled');
+          } else {
+            btn.addEventListener('click', (e) => {
+              updateVolumeUI(0);
+              const evt = new CustomEvent('ermot:action', { detail: { action: 'volume-mute', timestamp: Date.now() } });
+              window.dispatchEvent(evt);
+            });
+          }
+        });
+
+        document.querySelectorAll('[data-action="volume-max"]').forEach(btn => {
+          if (VOLUME_READ_ONLY) {
+            btn.setAttribute('disabled', 'disabled');
+          } else {
+            btn.addEventListener('click', (e) => {
+              updateVolumeUI(100);
+              const evt = new CustomEvent('ermot:action', { detail: { action: 'volume-max', timestamp: Date.now() } });
+              window.dispatchEvent(evt);
+            });
+          }
+        });
+
+        // System volume sync: prefer event-driven updates from preload/main via window.api.onVolume
+        // If that API isn't available, fall back to polling window.getSystemVolume() when present.
+        let _systemVolumeInterval = null;
+        async function syncSystemVolumeOnce() {
+          if (typeof window.getSystemVolume === 'function') {
+            try {
+              const lvl = await window.getSystemVolume();
+              if (typeof lvl === 'number') {
+                updateVolumeUI(lvl);
+                const slider = document.getElementById('volume-slider');
+                if (slider && slider.value != String(lvl)) slider.value = lvl;
+              }
+            } catch (err) {
+              console.warn('getSystemVolume failed:', err);
+            }
+          }
+        }
+
+        if (window.api && typeof window.api.onVolume === 'function') {
+          // event-driven: main process will push 'volume' events via ipc -> preload -> renderer
+          window.api.onVolume((data) => {
+            // support multiple payload shapes: number, { level }, { data }
+            const lvl = (typeof data === 'number')
+              ? data
+              : (data && typeof data.level === 'number')
+                ? data.level
+                : (data && typeof data.data === 'number')
+                  ? data.data
+                  : null;
+            if (lvl !== null) {
+              updateVolumeUI(lvl);
+              const slider = document.getElementById('volume-slider');
+              if (slider && slider.value != String(lvl)) slider.value = lvl;
+            }
+          });
+        } else if (typeof window.getSystemVolume === 'function') {
+          // fallback polling
+          syncSystemVolumeOnce();
+          _systemVolumeInterval = setInterval(syncSystemVolumeOnce, 1500);
+        }
+
+        window.addEventListener('beforeunload', () => {
+          if (_systemVolumeInterval) clearInterval(_systemVolumeInterval);
+        });
+
+        // Mouse events from main (via preload)
+        if (window.api && typeof window.api.onMouse === 'function') {
+          window.api.onMouse((payload) => {
+            if (!payload || !payload.action) return;
+            const pointer = document.getElementById('remote-pointer');
+            const posEl = document.getElementById('mouse-pos');
+            const lastEl = document.getElementById('mouse-last-click');
+
+            const fmt = (x, y) => (x == null || y == null) ? '—' : `${Math.round(x)}, ${Math.round(y)}`;
+
+            if (payload.action === 'mouse-move') {
+              if (pointer && payload.x != null && payload.y != null) {
+                pointer.style.left = payload.x + 'px';
+                pointer.style.top = payload.y + 'px';
+                pointer.style.display = 'block';
+              }
+              if (posEl) posEl.textContent = `Position: ${fmt(payload.x, payload.y)}`;
+            } else if (payload.action === 'mouse-click') {
+              if (lastEl) lastEl.textContent = `Dernier clic: ${fmt(payload.x, payload.y)}`;
+              if (pointer) {
+                pointer.style.display = 'block';
+                if (payload.x != null) pointer.style.left = payload.x + 'px';
+                if (payload.y != null) pointer.style.top = payload.y + 'px';
+                pointer.classList.add('btn-active');
+                setTimeout(() => pointer.classList.remove('btn-active'), 300);
+                setTimeout(() => { pointer.style.display = 'none'; }, 800);
+              }
+            }
+          });
+        }
+
+        // Improved keyboard tracker: track active keys (keydown/keyup), show combo + timestamp, and dispatch events
+        (function keyboardTracker() {
+          const keysEl = document.getElementById('keyboard-active-keys');
+          const statusEl = document.getElementById('keyboard-status');
+          const active = new Set();
+          let clearTimer = null;
+
+          function comboLabel() {
+            // Create a stable label for the current active keys, ordering modifiers first
+            const mods = [];
+            if (active.has('Control') || active.has('Ctrl')) mods.push('Ctrl');
+            if (active.has('Alt')) mods.push('Alt');
+            if (active.has('Meta')) mods.push('Meta');
+            if (active.has('Shift')) mods.push('Shift');
+            // other keys
+            const others = [...active].filter(k => !['Control','Ctrl','Alt','Meta','Shift'].includes(k)).map(k => (k.length === 1 ? k.toUpperCase() : k));
+            return mods.concat(others).join(' + ') || '—';
+          }
+
+          function onKeyDown(e) {
+            const tag = (e.target && e.target.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target && e.target.isContentEditable) return;
+
+            const key = e.key === 'Control' ? 'Ctrl' : e.key;
+            active.add(key);
+
+            if (keysEl) keysEl.textContent = comboLabel();
+            if (statusEl) statusEl.textContent = `Dernière: ${comboLabel()} @ ${new Date().toLocaleTimeString()}`;
+
+            // dispatch down event
+            window.dispatchEvent(new CustomEvent('ermot:action', { detail: { action: 'keyboard-down', keys: [comboLabel()], timestamp: Date.now() } }));
+
+            if (clearTimer) clearTimeout(clearTimer);
+            clearTimer = setTimeout(() => {
+              active.clear();
+              if (keysEl) keysEl.textContent = '—';
+            }, 1500);
+          }
+
+          function onKeyUp(e) {
+            const tag = (e.target && e.target.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target && e.target.isContentEditable) return;
+
+            const key = e.key === 'Control' ? 'Ctrl' : e.key;
+            // remove only one occurrence
+            active.delete(key);
+            if (keysEl) keysEl.textContent = comboLabel();
+
+            // dispatch up event
+            window.dispatchEvent(new CustomEvent('ermot:action', { detail: { action: 'keyboard-up', keys: [comboLabel()], timestamp: Date.now() } }));
+
+            if (clearTimer) clearTimeout(clearTimer);
+            clearTimer = setTimeout(() => {
+              active.clear();
+              if (keysEl) keysEl.textContent = '—';
+            }, 1200);
+          }
+
+          window.addEventListener('keydown', onKeyDown, { passive: true });
+          window.addEventListener('keyup', onKeyUp, { passive: true });
+
+          // clear on blur (window loses focus)
+          window.addEventListener('blur', () => {
+            active.clear();
+            if (keysEl) keysEl.textContent = '—';
+          });
+        })();
+      });
+
+      // --- Ermot action tracker: dispatch CustomEvents and update status areas ---
+      (function() {
+        function dispatchAction(action, payload = {}) {
+          const event = new CustomEvent('ermot:action', { detail: { action, ...payload } });
+          window.dispatchEvent(event);
+        }
+
+        function setStatus(id, text) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.textContent = `Dernière: ${text}`;
+        }
+
+        document.addEventListener('click', function(e) {
+          const btn = e.target.closest('[data-action]');
+          if (!btn) return;
+          const action = btn.getAttribute('data-action');
+          const now = new Date().toLocaleTimeString();
+
+          // Update UI status for specific groups
+          if (action && action.startsWith('volume-')) {
+            setStatus('volume-status', `${action} @ ${now}`);
+          } else if (action && action.startsWith('mouse-')) {
+            setStatus('mouse-status', `${action} @ ${now}`);
+          } else if (action && action.startsWith('keyboard-')) {
+            setStatus('keyboard-status', `${action} @ ${now}`);
+          } else if (action && action.startsWith('system-')) {
+            setStatus('system-status', `${action} @ ${now}`);
+          } else if (action && action.startsWith('server-')) {
+            setStatus('server-action-status', `${action} @ ${now}`);
+          }
+
+          // Dispatch a CustomEvent with action metadata
+          dispatchAction(action, { timestamp: Date.now(), label: btn.title || btn.getAttribute('aria-label') });
+        });
+
+        // API for remote/mobile to notify UI of actions (e.g. highlight key presses)
+        function handleRemoteAction(action, payload = {}) {
+          // Update statuses like a click
+          const fakeBtn = document.querySelector(`[data-action="${action}"]`);
+          const now = new Date().toLocaleTimeString();
+          if (fakeBtn) {
+            // briefly add active class
+            fakeBtn.classList.add('btn-active');
+            setTimeout(() => fakeBtn.classList.remove('btn-active'), 400);
+          }
+
+          // If keyboard action, update active keys display
+          if (action && action.startsWith('keyboard-')) {
+            const keysEl = document.getElementById('keyboard-active-keys');
+            if (keysEl) keysEl.textContent = payload.keys ? payload.keys.join(', ') : (payload.label || action);
+            setStatus('keyboard-status', `${action} @ ${now}`);
+          }
+
+          // If server action
+          if (action && action.startsWith('server-')) {
+            setStatus('server-action-status', `${action} @ ${now}`);
+          }
+
+          // Helper to format coordinates safely
+          function formatCoords(x, y) {
+            if (x == null || y == null) return '—';
+            return `${Math.round(x)}, ${Math.round(y)}`;
+          }
+
+          // Remote mouse move/click handling
+          if (action === 'mouse-move') {
+            const pointer = document.getElementById('remote-pointer');
+            if (pointer && payload.x != null && payload.y != null) {
+              pointer.style.left = payload.x + 'px';
+              pointer.style.top = payload.y + 'px';
+              pointer.style.display = 'block';
+            }
+            const posEl = document.getElementById('mouse-pos');
+            if (posEl) posEl.textContent = `Position: ${formatCoords(payload.x, payload.y)}`;
+          }
+
+          // Remote volume control
+          if (action && action.startsWith('volume-')) {
+            const volEl = document.getElementById('volume');
+            const fill = document.getElementById('volume-fill');
+            const slider = document.getElementById('volume-slider');
+            const volStatus = document.getElementById('volume-status');
+            // payload may include { level: 0-100 }
+            const level = (payload && typeof payload.level === 'number') ? Math.max(0, Math.min(100, payload.level)) : null;
+            if (level !== null) {
+              if (volEl) volEl.textContent = level + '%';
+                // set slider and bars
+                if (slider) slider.value = level;
+                const bars = document.querySelectorAll('.volume-bars .bar');
+                const active = Math.round((level / 100) * bars.length);
+                bars.forEach((b, i) => { if (i < active) b.classList.add('active'); else b.classList.remove('active'); });
+                if (volStatus) volStatus.textContent = `Dernière: ${action} @ ${new Date().toLocaleTimeString()}`;
+            } else {
+              // if action is mute/max without explicit level, infer
+              if (action === 'volume-mute') {
+                if (volEl) volEl.textContent = 'Muted';
+                if (slider) slider.value = 0;
+                document.querySelectorAll('.volume-bars .bar').forEach(b => b.classList.remove('active'));
+              } else if (action === 'volume-max') {
+                if (volEl) volEl.textContent = '100%';
+                if (slider) slider.value = 100;
+                document.querySelectorAll('.volume-bars .bar').forEach(b => b.classList.add('active'));
+              }
+            }
+          }
+
+          if (action === 'mouse-click') {
+            const posEl = document.getElementById('mouse-last-click');
+            const pointer = document.getElementById('remote-pointer');
+            if (posEl) posEl.textContent = `Dernier clic: ${formatCoords(payload.x, payload.y)}`;
+            if (pointer && payload.x != null && payload.y != null) {
+              pointer.classList.add('btn-active');
+              setTimeout(() => pointer.classList.remove('btn-active'), 300);
+            }
+            // brief pulse visual
+            if (pointer) {
+              pointer.style.display = 'block';
+              pointer.style.left = (payload.x != null ? payload.x : 0) + 'px';
+              pointer.style.top = (payload.y != null ? payload.y : 0) + 'px';
+              setTimeout(() => pointer.style.display = 'none', 800);
+            }
+          }
+
+          // Dispatch as if local
+          dispatchAction(action, { timestamp: Date.now(), remote: true, payload });
+        }
+
+        // Expose to window so other scripts (or preload) can call it
+        window.handleRemoteAction = handleRemoteAction;
+
+        // Also listen for CustomEvent from external code
+        window.addEventListener('ermot:remote-action', function(e) {
+          const d = e && e.detail ? e.detail : {};
+          handleRemoteAction(d.action, d);
+        });
+      })();
+    </script>
+  </body>
+</html>
